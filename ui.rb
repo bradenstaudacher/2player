@@ -2,71 +2,101 @@
 #   def initialize
 
 # end
+require_relative 'game'
 
-def askquestion(player, num1, num2)
-  puts "#{player.player_name}: What does #{num1} plus #{num2} equal?"
-end
+class UserInterface
 
-def finalprint
-  spacer = "       |"
-  puts "+++++FINAL GAME SCORE+++++"
-  puts "Points  |Lives   |Name    "
-  puts "--------|--------|--------"
-  puts "#{@player1.player_points}" + spacer + "#{@player1.player_lives}" + spacer + "#{@player1.player_name}"
-  puts "--------------------------"
-  puts "#{@player2.player_points}" + spacer + "#{@player2.player_lives}" + spacer + "#{@player2.player_name}"
-end
+  attr_accessor :game
 
-def answerhandler(player, num1, num2)
-  solution = num1 + num2
-  answer = gets.chomp
-  if /\d+/.match(answer) == nil
-    puts "Please enter a number!"
-    answerhandler(player, num1, num2)
-  else
-    if solution == answer.to_i
-      player.addpoint
+  def get_answer(num1, num2)
+    puts "#{@game.current_player.player_name}: What does #{num1} plus #{num2} equal?"
+    answer = gets.chomp
+    if @game.answer_is_number(answer)
+      puts "Please enter a number!"
+      get_answer(num1,num2)
+    else
+      answer
+    end
+  end
+
+  def finalprint
+    spacer = "           |"
+    puts "++++++++++FINAL GAME SCORE++++++++++"
+    puts "Points      |Lives       |Name    "
+    puts "------------|------------|-----------"
+    puts "#{@game.player1.player_points}" + spacer + "#{@game.player1.player_lives}" + spacer + "#{@game.player1.player_name}"
+    puts "-----------------------------------"
+    puts "#{@game.player2.player_points}" + spacer + "#{@game.player2.player_lives}" + spacer + "#{@game.player2.player_name}"
+    puts "+++++++++CURRENT  STANDINGS+++++++++"
+    puts "Games Won |Games Lost |Name        "
+    populate_standings
+  end
+
+  def populate_standings
+    spacer = "           |"
+    pos1 = @game.currentranks[0]
+    pos2 = @game.currentranks[1]
+    puts "#{pos1.player_wins}" + spacer + "#{pos1.player_losses}" + spacer + "#{pos1.player_name}"
+    puts "-----------------------------------"
+    puts "#{pos2.player_wins}" + spacer + "#{pos2.player_losses}" + spacer + "#{pos2.player_name}"
+  end
+
+  def gameover?
+    if @game.is_gameover?
+      @game.tally_win
+      @game.tally_loss
+      dead_player = @game.get_dead_player
+      puts "Gameover! #{dead_player.player_name} ran out of lives."
+      finalprint
+      return true
+    end
+    false
+  end
+
+  def turn(player)
+    num1, num2 = @game.rollnum
+    answer = get_answer(num1, num2)
+    if @game.answer(player, answer, num1, num2)
       puts "Correct #{player.player_name}, your score is #{player.player_points}"
     else
-      player.loselife
       player.player_lives == 1 ? proplife = "life" : proplife = "lives"
       puts "Incorrect #{player.player_name}, #{player.player_lives} "+proplife+" remaining"
     end
+    @game.next_player
   end
-end
 
-def gameover?
-  state = @player1.player_lives == 0 || @player2.player_lives == 0
-  p1loss = true if @player1.player_lives == 0
-  p2loss = true if @player2.player_lives == 0
-
-  if state == true && p1loss == true
-    puts "Gameover! #{@player1.player_name} ran out of lives."
-    finalprint
+  def maintask
+    loop do
+      turn(@game.current_player)
+      break if gameover? && !restarting?
+    end
   end
-  if state == true && p2loss == true
-    puts "Gameover! #{@player2.player_name} ran out of lives."
-    finalprint
-  end 
-  # if playagain?
-  #   maintask
-  # else
-  return state
+
+  def start
+    puts "Please enter your name Player1"
+    player1 = Player.new(gets.chomp,0,3,0,0)
+    puts "Please enter your name Player2"
+    player2 = Player.new(gets.chomp,0,3,0,0)
+    @game = Game.new(player1, player2)
+    maintask
+  end
+  def reset_game
+    player1 = Player.new(@game.player1.player_name,0,3,@game.player1.player_wins,0)
+    player2 = Player.new(@game.player2.player_name,0,3,@game.player2.player_wins,0)
+    @game = Game.new(player1, player2)
+  end
+  def restarting?
+    puts "Do you want to restart? (y/n)"
+    if gets.chomp == "y"
+      system("clear")
+      reset_game
+      return true
+    end
+    system("clear")
+    return false
+  end
+
 end
 
-# def playagain?
-#   puts "Would you like to play again? (y/n)"
-#   input = gets.chomp
-#   if input == "y" || "yes"
-#     return true
-#   end
-#   if input == "n" || "no"
-#     return false
-#   end
-# end
+UserInterface.new().start
 
-def rollnum
-  num1 = rand(50)
-  num2 = rand(50)
-  return [num1, num2]
-end
